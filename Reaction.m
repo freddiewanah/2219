@@ -1,0 +1,70 @@
+clear all;
+close all;
+
+%% set parameters
+dt = 10 ;                                                                  % simulation time step-unit:ns
+t_max = 2e3;                                                                % total simulation time-unit:ns
+rodcenter = [1 1; 1 -1; -1 1; -1 -1];          % center of carbon rods,stored as a two column matrix,with the first column for x coordinate and second for y,unit:m
+rodradius = 0.25*ones(4,1);        % radius of carbon rods,stored in a n*1 matrix.rodradius(j) stands for radius of the jth rod ,unit:m
+Neutrons = NaN (2500,12);      % information about the neutrons
+E = 1;                        % initial kinetic energy ,unit:Mev
+M = 1.675e-27;                % neutron mass,unit:kg
+% initial velocity
+E1 = E * 1.6e-13;                  % convert energy from MeV to J
+v = 1e-8 * sqrt (2*E1/M);          % initial velocity of the neutron when it is generated,calculated by using E = m*v^2/2; unit:m/10ns (meter per time step)
+
+
+%% image generate
+%reactor plot
+% x = linspace (0,2*pi);
+% plot (cos(x)*5,sin(x)*5,'k','LineWidth',5);
+% hold on;
+% 
+% % carbon rods plot
+% viscircles (rodcenter,rodradius,'EdgeColor','k');
+% hold on;
+
+%% main simulation
+n = t_max/dt;                                                              % number of steps throughout the whole simulation
+m = dt;                                                                    % number of neutrons generated in one time step
+for i = 1:n;
+    for j = 1:m
+        k = 10*(i-1) + j;                                                  % row number
+        Neutrons(k,1) = 1;                                                 % states for each neutron,'1' stands for outside carbon rod,'2' stands for inside carbon rod,'3' stands for absorbed by the carbon rod,'4' stands for escaped from carbon rod and absorbed by U235
+        Neutrons(k,[2 3]) =  neutrongenerate1 (rodcenter,rodradius);       %initial position:'[:,2]' represents horizontal coordinate, '[:,3]' represents vertical coordinate
+        theta = 2*pi*rand(1);
+        Neutrons(k,[4 5]) =  [cos(theta) sin(theta)];                      %initial diretion of motion:'[:,4]' represents vector component of direction vector on horizontal coordinate, '[1,5]' represents vector component of directionvector on horizontal coordinate         
+        Neutrons(k,[6,7]) =  [v E];                                        % unit of v :m/10ns(simulation time step)     unit of E : MeV 
+        Neutrons(k,10)= i ;
+    end
+     
+     Neutrons = neutronmotion (Neutrons,rodcenter,rodradius);              % neutron motion
+    
+    %% plot the number of neutrons created and absorbed, as a function of time (time step)
+     y=10*i; 
+     plot(i,y,'b*');         %plot genarated Neutrons
+     hold on;
+     plot(i,size(Neutrons(Neutrons(:,1)==3,:),1),'r*');                    %plot absorbed Neutrons
+     hold on;
+     z=y/size(Neutrons(Neutrons(:,1)==3,:),1);
+     plot(i,z,'k*')
+     xlabel('Time step (10ns)');
+     ylabel('Number of Neutrons');
+     title('Number of Neutrons Created and Absorbed')
+    
+    
+    %% initial plot position of fast neutrons and absorbed neutrons(no practical significance)
+%     h1_old = plot (0,0);
+%     h2_old = plot (0,0);
+    %% plot all neutrons
+%     h1 =scatter(Neutrons(Neutrons(:,1)==1,2),Neutrons(Neutrons(:,1)==1,3),'filled','MarkerEdgeColor','b','MarkerFaceColor','b'); 
+%     h2 = scatter (Neutrons(Neutrons(:,1)==3,2),Neutrons(Neutrons(:,1)==3,3),'filled','MarkerEdgeColor','r','MarkerFaceColor','r');
+%     delete (h1_old);
+%     delete (h2_old);
+%     h1_old = h1;
+%     h2_old = h2;
+   drawnow;
+    
+end
+Neutrons =lifetime(Neutrons);
+avg=avg(Neutrons);
